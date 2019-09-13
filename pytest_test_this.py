@@ -35,7 +35,8 @@ def pytest_collection_modifyitems(config, items):
     def keep(node: Node):
         if node.fspath not in results:
             return False
-        if node.name in results[node.fspath]:
+        test_name_excluding_parameters = node.name.partition('[')[0]
+        if test_name_excluding_parameters in results[node.fspath]:
             return True
         return False
 

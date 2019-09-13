@@ -10,7 +10,7 @@ requirements = [
 
 setup(
     name='pytest-test-this',
-    version='0.1.0',
+    version='0.2.0',
     description='Plugin for py.test to run relevant tests, based on naively checking if a test contains a reference to the symbol you supply',
     long_description=readme + '\n',
     author='Anders Hovmöller',
