@@ -17,8 +17,15 @@ def test_plugin(testdir):
     """
     )
 
-    # run all tests with pytest
-    result = testdir.runpytest('--test-this=foo')
+    # run all tests
+    result = testdir.runpytest('-v')
+    assert 'collecting ... collected 2 items' in result.outlines
+    result.assert_outcomes(passed=2)
 
-    # check that all 4 tests passed
+    # filter the tests
+    # assert 'collecting ... collected test_foo' in testdir.runpytest('--test-this=foo', '-v').outlines
+
+    result = testdir.runpytest('--test-this=foo', '-v')
     result.assert_outcomes(passed=1)
+
+
