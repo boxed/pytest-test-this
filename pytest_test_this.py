@@ -1,6 +1,8 @@
 import re
 from collections import defaultdict
-from typing import DefaultDict, List
+from functools import lru_cache
+from subprocess import check_output
+from typing import DefaultDict, Set
 
 from _pytest.nodes import Node
 
@@ -13,9 +15,33 @@ def pytest_addoption(parser):
         dest="test_this",
         help='Name of thing to find tests for',
     )
+    group.addoption(
+        "--test-this-git",
+        action="store_true",
+        dest="test_this_git",
+        help='Try to figure out what to test based on a git diff',
+    )
 
 
+skip_all = False
+
+
+@lru_cache(1)
 def get_symbols_from_config(config):
+    if config.getoption('test_this_git', default=None):
+        diff = check_output(['git', 'diff']).decode().split('\n')
+
+        changed_functions = {
+            x.rpartition('@@')[-1].partition('(')[0].replace('def ', '').replace('class ', '')
+            for x in diff if x.startswith('@@')
+        }
+
+        if not changed_functions:
+            global skip_all
+            skip_all = True
+
+        return changed_functions
+
     symbols = config.getoption('test_this', default=None)
     if symbols is None:
         return None
@@ -24,6 +50,9 @@ def get_symbols_from_config(config):
 
 
 def pytest_collection_modifyitems(config, items):
+    if skip_all:
+        items[:] = []
+
     symbols = get_symbols_from_config(config)
     if not symbols:
         return
@@ -66,7 +95,7 @@ def pytest_ignore_collect(path, config):
         return True
 
 
-def check_line(*, i: int, line: str, symbols: List[str], full_path, f, results: DefaultDict[str, set]):
+def check_line(*, i: int, line: str, symbols: Set[str], full_path, f, results: DefaultDict[str, set]):
     symbols_joined = '|'.join(symbols)
     if re.search(rf'\b({symbols_joined})\b', line):
         if not line.startswith(' '):
@@ -90,7 +119,7 @@ def check_line(*, i: int, line: str, symbols: List[str], full_path, f, results: 
         results[full_path].add(test_name)
 
 
-def find_for_file(*, f, full_path, results: DefaultDict[str, set], symbols: List[str]):
+def find_for_file(*, f, full_path, results: DefaultDict[str, set], symbols: Set[str]):
     if any(symbol in f.contents for symbol in symbols):
         for i, line in enumerate(f.lines):
             check_line(
