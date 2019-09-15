@@ -21,4 +21,12 @@ Usage
 
     pytest --test-this=foo
 
-...where foo is the name of your function, class or variable.
+...where foo is the name of your function, class or variable. You can write multiple symbols comma separated.
+
+
+There is also a special simplified mode for users of git:
+
+    pytest --test-this-git
+
+
+this will try to automatically guess the symbols to run againsts based on a `git diff` and run pytest-test-this againsts those symbols
