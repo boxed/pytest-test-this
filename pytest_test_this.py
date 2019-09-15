@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import DefaultDict
+from typing import DefaultDict, List
 
 from _pytest.nodes import Node
 
@@ -15,10 +15,18 @@ def pytest_addoption(parser):
     )
 
 
+def get_symbols_from_config(config):
+    symbols = config.getoption('test_this', default=None)
+    if symbols is None:
+        return None
+
+    return {x for x in set(symbols.split(',')) if x}
+
+
 def pytest_collection_modifyitems(config, items):
-    symbol = config.getoption('test_this', default=None)
-    if symbol is None:
-        return False
+    symbols = get_symbols_from_config(config)
+    if not symbols:
+        return
 
     files = {x.fspath for x in items}
 
@@ -29,7 +37,7 @@ def pytest_collection_modifyitems(config, items):
             f=f,
             full_path=path,
             results=results,
-            symbol=symbol,
+            symbols=symbols,
         )
 
     def keep(node: Node):
@@ -47,19 +55,20 @@ def pytest_ignore_collect(path, config):
     if not path.strpath.endswith('.py'):
         return
 
-    symbol = config.getoption('test_this', default=None)
-    if symbol is None:
-        return False
+    symbols = get_symbols_from_config(config)
+    if not symbols:
+        return
 
     f = LazyFileContents(path)
 
     # let's just do the quick check here
-    if symbol not in f.contents:
+    if all(symbol not in f.contents for symbol in symbols):
         return True
 
 
-def check_line(*, i, line, symbol, full_path, f, results: DefaultDict[str, set]):
-    if re.search(rf'\b{symbol}\b', line):
+def check_line(*, i: int, line: str, symbols: List[str], full_path, f, results: DefaultDict[str, set]):
+    symbols_joined = '|'.join(symbols)
+    if re.search(rf'\b({symbols_joined})\b', line):
         if not line.startswith(' '):
             return
 
@@ -81,13 +90,13 @@ def check_line(*, i, line, symbol, full_path, f, results: DefaultDict[str, set])
         results[full_path].add(test_name)
 
 
-def find_for_file(*, f, full_path, results: DefaultDict[str, set], symbol):
-    if symbol in f.contents:
+def find_for_file(*, f, full_path, results: DefaultDict[str, set], symbols: List[str]):
+    if any(symbol in f.contents for symbol in symbols):
         for i, line in enumerate(f.lines):
             check_line(
                 i=i,
                 line=line,
-                symbol=symbol,
+                symbols=symbols,
                 full_path=full_path,
                 f=f,
                 results=results,
