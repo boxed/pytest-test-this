@@ -29,4 +29,4 @@ There is also a special simplified mode for users of git:
     pytest --test-this-git
 
 
-this will try to automatically guess the symbols to run againsts based on a `git diff` and run pytest-test-this againsts those symbols
+this will try to automatically guess the symbols to run against based on a `git diff` and run pytest-test-this against those symbols
